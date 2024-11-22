@@ -272,7 +272,7 @@ class LLMFilter(Filter):
 			file.write(json.dumps({
 				'data': {
 					'id': method.id,
-					'labels': method.labels,
+					'labels': list(method.labels),
 					'properties': description
 				}
 			}))
@@ -338,12 +338,18 @@ class LLMFilter(Filter):
 				max_tokens=1024,
 				temperature=0
 			)
-			description = response.choices[0].message.content
-		except:
+			text = response.choices[0].message.content
+			
+			description = text[text.find("{"):text.rfind("}") + 1]
+
+		except Exception as e:
+			print(e)
 			description = '{}'
 
 		try:
 			description = json.loads(description)
+			with open("train_test_data.txt", 'a') as f:
+				f.write("###".join([prompt, json.dumps(description), "###"]))
 		except:
 			description = dict()
 
@@ -369,11 +375,11 @@ class LLMFilter(Filter):
 						if node.properties['simpleName'] == param['name']
 					]
 					if matching_params:
-						param_node_id = matching_params[0]['id']
+						param_node_id = matching_params[0].id
 						if param_node_id in data.nodes:
 							data.nodes[param_node_id].properties['description'] = param.get('description')
 			elif key_lower == 'returns':
-				method.properties['returns'] = value.get('description', None) if value else None
+				method.properties['returns'] = None if not value or isinstance(value, str) else value.get('description', None)
 			else:
 				method.properties[key_lower] = value
 
